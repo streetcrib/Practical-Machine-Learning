@@ -1,0 +1,82 @@
+---
+title: "Practical Machine Learning"
+author: "Rishabh Kant"
+date: "20 October 2020"
+pagetitle: Classifiers
+output:
+       html_document: default
+---
+```{r}
+#1.Loading our required dataset
+#This is the first thing we need to do before we can go ahead with our analysis
+#First we load the required packages in R
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(RGtk2)
+library(rattle)
+library(randomForest)
+#Now we load our dataset
+traindata<-read.csv('training_data.csv',na.strings = c("NA", "#DIV/0!", ""))
+testdata<-read.csv('testing_data.csv', na.strings = c("NA", "#DIV/0!", ""))
+#checking dimension of the training dataset
+dim(traindata)
+dim(testdata)
+```
+
+```{r}
+#2.Cleaning the data before we use it
+#Our data might have a lot of unwanted elements, we need to get rid of them first
+#We need to perform 3 steps before our dataset is ready
+#1st we remove those variables that have almost zero variance
+x <- nearZeroVar(traindata)
+modifiedtrainingdata <- traindata[, -x]
+modifiedtestingdata <- testdata[, -x]
+#now we check dimension again to see if our changes have been implemented
+dim(modifiedtrainingdata)
+dim(modifiedtestingdata)
+#now we filter out those which have more than 95% as NA
+navalcol <- sapply(modifiedtrainingdata, function(x) mean(is.na(x))) > 0.95
+modifiedtrainingdata <- modifiedtrainingdata[,navalcol == FALSE]
+modifiedtestingdata <- modifiedtestingdata[,navalcol == FALSE]
+```
+
+```{r}
+#the first 7 columns contain non numeric data, hence they will not contribute to our analysis
+orgtrainingdata <- modifiedtrainingdata[,8:59]
+orgtestingdata <- modifiedtestingdata[,8:59]
+#we check the dimension again to make sure that our changes have been implemented
+dim(orgtrainingdata)
+dim(orgtestingdata)
+```
+
+```{r}
+#3. Now we create a partition in our dataset in order to train our model
+inT <- createDataPartition(orgtrainingdata$classe, p=0.6, list=FALSE)
+Train <- orgtrainingdata[inT,]
+Test <- orgtrainingdata[-inT,]
+#checking dimension again
+dim(Train)
+dim(Test)
+```
+
+```{r}
+#4. First we implement decision tree classifier
+decisionTree <- train(classe ~ ., method= "rpart", data=Train)
+DT <- predict(decisionTree, Test)
+confusionMatrix(DT,Test$classe)
+rpart.plot(decisionTree$finalModel, roundint=FALSE)
+```
+
+```{r}
+#5. Then we implement Random Forest
+RFmodfit <- train(classe ~ ., data = Train, method = "rf", ntree = 10)
+RFprediction <- predict(RFmodfit, Test)
+RFpredconf <- confusionMatrix(RFprediction, Test$classe)
+RFpredconf
+plot(RFpredconf$table, col = RFpredconf$byClass, 
+     main = paste("Random Forest - Accuracy Level =",
+                  round(RFpredconf$overall['Accuracy'], 4)))
+```
+
